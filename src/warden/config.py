@@ -29,11 +29,11 @@ class Config:
     serve_port: int
 
     @classmethod
-    def from_env(cls) -> "Config":
+    def from_env(cls, require_key: bool = True) -> "Config":
         return cls(
             llm_base_url=env("WARDEN_LLM_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/"),
             llm_model=env("WARDEN_LLM_MODEL", "llama-3.1-8b-instant"),
-            llm_api_key=env("WARDEN_LLM_API_KEY", required=True),
+            llm_api_key=env("WARDEN_LLM_API_KEY", required=require_key),
             loki_url=env("WARDEN_LOKI_URL", "http://loki.monitoring.svc.cluster.local:3100").rstrip("/"),
             logql=env("WARDEN_LOGQL", '{namespace="apps"} |= "error"'),
             k8s_api=env("WARDEN_K8S_API", "https://kubernetes.default.svc"),

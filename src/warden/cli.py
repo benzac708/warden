@@ -27,7 +27,7 @@ def run_once(cfg: Config) -> dict:
 
 def main() -> None:
     mode = sys.argv[1] if len(sys.argv) > 1 else "agent"
-    cfg = Config.from_env()
+    cfg = Config.from_env(require_key=(mode != "serve"))
 
     if mode == "serve":
         start_server(cfg.serve_port, cfg.page_path, cfg.report_path)
