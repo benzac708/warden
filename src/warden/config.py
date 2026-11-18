@@ -35,7 +35,7 @@ class Config:
             llm_model=env("WARDEN_LLM_MODEL", "qwen/qwen3.8-27b"),
             llm_api_key=env("WARDEN_LLM_API_KEY", required=require_key),
             loki_url=env("WARDEN_LOKI_URL", "http://loki.monitoring.svc.cluster.local:3100").rstrip("/"),
-            logql=env("WARDEN_LOGQL", '{namespace="apps"} |= "error"'),
+            logql=env("WARDEN_LOGQL", '{namespace="apps"}'),
             k8s_api=env("WARDEN_K8S_API", "https://kubernetes.default.svc"),
             report_path=env("WARDEN_REPORT_PATH", "/var/www/warden/report.json"),
             page_path=env("WARDEN_PAGE_PATH", "/www/index.html"),

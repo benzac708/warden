@@ -6,7 +6,8 @@ from warden.investigate import investigate
 
 CFG = SimpleNamespace(llm_model="test-model", max_steps=4, token_budget=10000)
 
-FINISH = '{"tool":"finish","summary":"Deploy 4f2a9c dropped a config key.","confidence":0.86,"evidence":["KeyError: DATABASE_URL"]}'
+FINISH = '{"tool":"finish","status":"explained","summary":"Deploy 4f2a9c dropped a config key.","confidence":0.86,"evidence":["KeyError: DATABASE_URL"]}'
+QUIET = '{"tool":"finish","status":"quiet","summary":"No matching error logs were found.","confidence":0.9,"evidence":[]}'
 
 
 class TestLoop(unittest.TestCase):
@@ -35,6 +36,12 @@ class TestLoop(unittest.TestCase):
             report = investigate(CFG)
         self.assertEqual(len(report["trace"]), 1)
         self.assertEqual(report["trace"][0]["tool"], "loki_query")
+
+    def test_quiet_status_is_preserved(self):
+        with patch("warden.investigate.chat", return_value=(QUIET, 5, 3)):
+            report = investigate(CFG)
+        self.assertEqual(report["status"], "quiet")
+        self.assertIn("No matching error logs", report["summary"])
 
 
 if __name__ == "__main__":
