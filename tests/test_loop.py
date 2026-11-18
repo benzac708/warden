@@ -43,6 +43,17 @@ class TestLoop(unittest.TestCase):
         self.assertEqual(report["status"], "quiet")
         self.assertIn("No matching error logs", report["summary"])
 
+    def test_budget_exhaustion_publishes_gathered_evidence(self):
+        cfg = SimpleNamespace(llm_model="test-model", max_steps=1, token_budget=100000, logql='{namespace="apps"}')
+        answer = ('{"tool":"loki_query","args":{"query":"x"}}', 10, 2)
+        with patch("warden.investigate.chat", return_value=answer), patch(
+            "warden.investigate.run_tool", return_value="ERROR demo: database connection refused"
+        ):
+            report = investigate(cfg)
+        self.assertEqual(report["status"], "explained")
+        self.assertIn("database connection refused", report["summary"])
+        self.assertTrue(report["evidence"])
+
 
 if __name__ == "__main__":
     unittest.main()

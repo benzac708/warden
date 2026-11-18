@@ -122,5 +122,22 @@ def investigate(cfg) -> dict:
         if tokens >= cfg.token_budget:
             break
 
-    metrics.inc("failures")
-    return _report("incomplete", "Token or step budget reached before a conclusion.", 0.0, trace, [], cost)
+    evidence = [item["result"][:300] for item in trace if item["result"]][:3]
+    errors = [
+        line.strip()
+        for item in trace
+        for line in item["result"].splitlines()
+        if "ERROR" in line.upper() and not line.strip().startswith("TOOL_ERROR")
+    ]
+    if errors:
+        summary = "Warden found " + str(len(errors)) + " error log lines. Example: " + errors[0][:180]
+        return _report("explained", summary, 0.6, trace, evidence, cost)
+
+    return _report(
+        "incomplete",
+        "Warden reviewed " + str(len(trace)) + " queries but did not reach a conclusion. See the trace for evidence.",
+        0.3,
+        trace,
+        evidence,
+        cost,
+    )
