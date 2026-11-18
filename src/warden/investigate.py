@@ -39,6 +39,15 @@ def _extract_json(text: str) -> dict | None:
     return value if isinstance(value, dict) else None
 
 
+def _error_lines(trace: list) -> list[str]:
+    return [
+        line.strip()
+        for item in trace
+        for line in item["result"].splitlines()
+        if "ERROR" in line.upper() and not line.strip().startswith("TOOL_ERROR")
+    ]
+
+
 def _report(status: str, summary: str, confidence: float, trace: list, evidence: list, cost: dict) -> dict:
     return {
         "schema": "warden.report/v1",
@@ -93,11 +102,15 @@ def investigate(cfg) -> dict:
             if status not in {"explained", "quiet"}:
                 status = "explained"
             if not summary:
-                summary = "Warden reviewed " + str(len(trace)) + " log queries. " + (
-                    "No matching error logs were found in the selected time range."
-                    if any("NO_MATCHING_LOGS" in item["result"] for item in trace)
-                    else "See the investigation trace for the evidence gathered."
-                )
+                errors = _error_lines(trace)
+                if errors:
+                    summary = "Warden found " + str(len(errors)) + " error log lines. Example: " + errors[0][:180]
+                else:
+                    summary = "Warden reviewed " + str(len(trace)) + " log queries. " + (
+                        "No matching error logs were found in the selected time range."
+                        if any("NO_MATCHING_LOGS" in item["result"] for item in trace)
+                        else "See the investigation trace for the evidence gathered."
+                    )
             if not evidence and trace:
                 evidence = [item["result"][:300] for item in trace if item["result"]][:3]
             return _report(status, summary, float(decision.get("confidence", 0.0)), trace, evidence, cost)
@@ -123,12 +136,7 @@ def investigate(cfg) -> dict:
             break
 
     evidence = [item["result"][:300] for item in trace if item["result"]][:3]
-    errors = [
-        line.strip()
-        for item in trace
-        for line in item["result"].splitlines()
-        if "ERROR" in line.upper() and not line.strip().startswith("TOOL_ERROR")
-    ]
+    errors = _error_lines(trace)
     if errors:
         summary = "Warden found " + str(len(errors)) + " error log lines. Example: " + errors[0][:180]
         return _report("explained", summary, 0.6, trace, evidence, cost)

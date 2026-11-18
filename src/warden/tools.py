@@ -22,7 +22,7 @@ def loki_query(cfg, query: str, limit: int = 20) -> str:
             lines.append(str(text))
     if not lines:
         return "NO_MATCHING_LOGS"
-    return "\n".join(lines[:limit])[:4000]
+    return "\n".join(lines[-limit:])[:4000]
 
 
 def k8s_get_pods(cfg, namespace: str = "apps") -> str:
