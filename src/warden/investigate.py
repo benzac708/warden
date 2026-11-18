@@ -93,11 +93,29 @@ def investigate(cfg) -> dict:
             if status not in {"explained", "quiet"}:
                 status = "explained"
             if not summary:
-                summary = "Investigation finished without a summary."
+                summary = "Warden reviewed " + str(len(trace)) + " log queries. " + (
+                    "No matching error logs were found in the selected time range."
+                    if any("NO_MATCHING_LOGS" in item["result"] for item in trace)
+                    else "See the investigation trace for the evidence gathered."
+                )
+            if not evidence and trace:
+                evidence = [item["result"][:300] for item in trace if item["result"]][:3]
             return _report(status, summary, float(decision.get("confidence", 0.0)), trace, evidence, cost)
 
         result = run_tool(cfg, tool, args)
         trace.append({"step": step, "tool": tool, "args": args, "result": result[:300]})
+
+        if result == "NO_MATCHING_LOGS":
+            evidence = [item["result"][:300] for item in trace if item["result"] != "NO_MATCHING_LOGS"][:3]
+            return _report(
+                "quiet",
+                "No matching log lines were found in the selected time range.",
+                0.6,
+                trace,
+                evidence,
+                cost,
+            )
+
         messages.append({"role": "user", "content": "TOOL_RESULT: " + result[:2000]})
         messages.append({"role": "user", "content": "Next JSON tool call, or finish."})
 
