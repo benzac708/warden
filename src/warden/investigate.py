@@ -44,7 +44,8 @@ def _error_lines(trace: list) -> list[str]:
         line.strip()
         for item in trace
         for line in item["result"].splitlines()
-        if "ERROR" in line.upper() and not line.strip().startswith("TOOL_ERROR")
+        if ("ERROR" in line.upper() or "FAULT" in line.upper())
+        and not line.strip().startswith("TOOL_ERROR")
     ]
 
 
