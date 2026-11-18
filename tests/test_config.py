@@ -14,7 +14,7 @@ class TestConfig(unittest.TestCase):
     @patch.dict(os.environ, {}, clear=True)
     def test_showcase_does_not_require_the_key(self):
         cfg = Config.from_env(require_key=False)
-        self.assertEqual(cfg.llm_model, "llama-3.1-8b-instant")
+        self.assertEqual(cfg.llm_model, "qwen/qwen3.8-27b")
         self.assertEqual(cfg.llm_base_url, "https://api.groq.com/openai/v1")
 
 

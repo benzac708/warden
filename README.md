@@ -25,7 +25,7 @@ Any OpenAI-compatible chat-completions endpoint works. Nothing is hardcoded in t
 
 | Provider | `WARDEN_LLM_BASE_URL` | `WARDEN_LLM_MODEL` example | Note |
 |---|---|---|---|
-| Groq | `https://api.groq.com/openai/v1` | `llama-3.1-8b-instant` | free tier, verify current free models |
+| Groq | `https://api.groq.com/openai/v1` | `qwen/qwen3.8-27b` | verify with `GET /models` for your key |
 | OpenRouter | `https://openrouter.ai/api/v1` | any `:free` model | free tier |
 | OpenCode Go | `https://opencode.ai/zen/go/v1` | `glm-5`, `kimi-k2.5` | needs a Go subscription; free-tier models are OpenCode-only |
 
