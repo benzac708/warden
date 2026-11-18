@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "Cache-Control": "no-store",
-    "Content-Security-Policy": "default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:",
 }
 
 
