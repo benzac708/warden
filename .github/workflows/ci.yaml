@@ -23,8 +23,23 @@ jobs:
           PYTHONPATH: src
         run: python -m unittest discover -s tests -v
 
-  build:
+  scan:
     needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy vulnerability scanner on source
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          severity: 'HIGH,CRITICAL'
+
+  build:
+    needs: [test, scan]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
@@ -49,8 +64,21 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ github.sha }}
             ghcr.io/${{ github.repository }}:v1
 
-  bump-image-tag:
+  scan-image:
     needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Trivy vulnerability scanner on image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/${{ github.repository }}:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          severity: 'HIGH,CRITICAL'
+
+  bump-image-tag:
+    needs: [build, scan-image]
     runs-on: ubuntu-latest
     steps:
       - name: Bump image tag in config repo
