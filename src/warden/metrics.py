@@ -14,8 +14,11 @@ _GAUGES = {"warden_last_run_timestamp_seconds": 0.0, "warden_last_confidence": 0
 
 
 def inc(name: str, amount: int = 1) -> None:
+    """Increment a counter. Callers pass the full, documented metric name."""
+    if name not in _COUNTERS:
+        raise KeyError("unknown counter: " + name)
     with _LOCK:
-        _COUNTERS[name] = _COUNTERS.get(name, 0) + amount
+        _COUNTERS[name] += amount
 
 
 def add_tokens(name: str, amount: int) -> None:

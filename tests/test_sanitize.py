@@ -17,12 +17,42 @@ class TestSanitize(unittest.TestCase):
         self.assertNotIn("user@internal.local", clean)
         self.assertIn("[internal-ip]", clean)
 
+    def test_json_and_bearer_credentials_are_removed(self):
+        text = '{"api_key": "supersecret"} Authorization: Bearer eyJhbGciOi token: plain123'
+        clean = clean_text(text)
+        self.assertNotIn("supersecret", clean)
+        self.assertNotIn("eyJhbGciOi", clean)
+        self.assertNotIn("plain123", clean)
+
+    def test_ipv6_and_arbitrary_internal_hosts_are_removed(self):
+        clean = clean_text("peer fd00::1 via node-1.internal and db.local")
+        self.assertNotIn("fd00::1", clean)
+        self.assertNotIn("node-1.internal", clean)
+        self.assertNotIn("db.local", clean)
+
+    def test_nested_keys_and_values_are_cleaned(self):
+        report = {
+            "schema": "warden.report/v1",
+            "trace": [{"step": 1, "args": {"api_key": "abc123", "query": "10.0.0.5"}}],
+            "sanitized": False,
+        }
+        clean = sanitize(report)
+        dumped = str(clean)
+        self.assertNotIn("abc123", dumped)
+        self.assertNotIn("10.0.0.5", dumped)
+        self.assertIn("api_key", dumped)
+        self.assertTrue(clean["sanitized"])
+
     def test_sanitize_is_idempotent(self):
         report = {"summary": "ip 10.1.2.3", "sanitized": False}
         once = sanitize(report)
         twice = sanitize(once)
         self.assertEqual(once, twice)
         self.assertTrue(twice["sanitized"])
+
+    def test_already_flagged_report_is_recleaned(self):
+        report = {"summary": "token=hunter2", "sanitized": True}
+        self.assertNotIn("hunter2", str(sanitize(report)))
 
 
 if __name__ == "__main__":

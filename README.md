@@ -38,7 +38,7 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 
 export WARDEN_LLM_API_KEY=...
 export WARDEN_LLM_BASE_URL=https://api.groq.com/openai/v1
-export WARDEN_LLM_MODEL=llama-3.1-8b-instant
+export WARDEN_LLM_MODEL=qwen/qwen3.8-27b
 export WARDEN_REPORT_PATH=/tmp/warden/report.json
 PYTHONPATH=src python -m warden.cli once
 ```
@@ -48,13 +48,20 @@ PYTHONPATH=src python -m warden.cli once
 | Variable | Default | Purpose |
 |---|---|---|
 | `WARDEN_LLM_BASE_URL` | Groq | provider endpoint |
-| `WARDEN_LLM_MODEL` | `llama-3.1-8b-instant` | model id |
+| `WARDEN_LLM_MODEL` | `qwen/qwen3.8-27b` | model id |
 | `WARDEN_LLM_API_KEY` | required | provider key, from Secret |
 | `WARDEN_LOKI_URL` | `http://loki.monitoring.svc.cluster.local:3100` | Loki endpoint |
-| `WARDEN_LOGQL` | `{namespace="apps"} \|= "error"` | investigation query |
+| `WARDEN_LOGQL` | `{namespace="apps"}` | investigation query |
 | `WARDEN_MAX_STEPS` | `6` | loop bound |
 | `WARDEN_TOKEN_BUDGET` | `24000` | token bound |
 | `WARDEN_INTERVAL_SECONDS` | `300` | run cadence |
+| `WARDEN_K8S_API` | `https://kubernetes.default.svc` | in-cluster API endpoint |
+| `WARDEN_REPORT_PATH` | `/var/www/warden/report.json` | published report path |
+| `WARDEN_PAGE_PATH` | `/www/index.html` | static page path |
+| `WARDEN_METRICS_PORT` | `8000` | agent metrics port |
+| `WARDEN_SERVE_PORT` | `8080` | public page port |
+
+The deployed interval is `900` seconds, set in `warden-config`.
 
 ## Metrics
 

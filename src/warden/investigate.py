@@ -26,6 +26,8 @@ Keep summary under 400 words. Cite log lines in evidence. Be specific, do not gu
 
 
 def _extract_json(text: str) -> dict | None:
+    if not isinstance(text, str):
+        return None
     cleaned = text.strip()
     cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
     cleaned = re.sub(r"\s*```$", "", cleaned)
@@ -76,10 +78,12 @@ def investigate(cfg) -> dict:
     tokens = 0
 
     for step in range(1, cfg.max_steps + 1):
+        if tokens >= cfg.token_budget:
+            break
         try:
             content, tokens_in, tokens_out = chat(cfg, messages)
         except LLMError as exc:
-            metrics.inc("failures")
+            metrics.inc("warden_failures_total")
             return _report("error", "Model call failed: " + str(exc)[:300], 0.0, trace, [], cost)
 
         cost["tokens_in"] += tokens_in
@@ -98,7 +102,10 @@ def investigate(cfg) -> dict:
 
         if tool == "finish":
             summary = str(decision.get("summary", "")).strip()
-            evidence = [str(item) for item in decision.get("evidence", []) if item]
+            raw_evidence = decision.get("evidence", [])
+            if not isinstance(raw_evidence, list):
+                raw_evidence = []
+            evidence = [str(item) for item in raw_evidence if isinstance(item, (str, int, float))]
             status = str(decision.get("status", "explained"))
             if status not in {"explained", "quiet"}:
                 status = "explained"
@@ -114,7 +121,11 @@ def investigate(cfg) -> dict:
                     )
             if not evidence and trace:
                 evidence = [item["result"][:300] for item in trace if item["result"]][:3]
-            return _report(status, summary, float(decision.get("confidence", 0.0)), trace, evidence, cost)
+            try:
+                confidence = float(decision.get("confidence", 0.0))
+            except (TypeError, ValueError):
+                confidence = 0.0
+            return _report(status, summary, confidence, trace, evidence, cost)
 
         result = run_tool(cfg, tool, args)
         trace.append({"step": step, "tool": tool, "args": args, "result": result[:300]})
@@ -132,9 +143,6 @@ def investigate(cfg) -> dict:
 
         messages.append({"role": "user", "content": "TOOL_RESULT: " + result[:2000]})
         messages.append({"role": "user", "content": "Next JSON tool call, or finish."})
-
-        if tokens >= cfg.token_budget:
-            break
 
     evidence = [item["result"][:300] for item in trace if item["result"]][:3]
     errors = _error_lines(trace)

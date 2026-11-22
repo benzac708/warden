@@ -1,7 +1,8 @@
 """Property tests with the standard library only.
 
-Property: clean_text never raises, never grows past its cap, and never leaves a
-private IPv4 address for any string made of hostile-looking fragments.
+For any hostile-looking input, clean_text must stay a bounded string and must
+not leave an IP address, a bearer token, or a credential assignment behind.
+The checks below are written independently of the production regexes.
 """
 
 import random
@@ -11,19 +12,15 @@ import unittest
 from warden.sanitize import clean_text
 
 FRAGMENTS = [
-    "10.0.0.1", "192.168.1.20", "auth-api-7d9f2a1b", "loki.monitoring.svc.cluster.local",
-    "token=abc", "password: hunter2", "https://user:pass@host", "a@b.local", "{}", "\n", "emoji 🚀", "x" * 200,
+    "10.0.0.1", "192.168.1.20", "fd00::1", "auth-api-7d9f2a1b",
+    "loki.monitoring.svc.cluster.local", "node-1.internal",
+    "token=abc", "api_key: hunter2", "Bearer eyJhbGciOi", "https://user:pass@host",
+    "a@b.local", "{}", "\n", "emoji 🚀", "x" * 200,
 ]
-IPV4 = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b(?!\d)")
-
-
-def is_private(address: str) -> bool:
-    parts = [int(part) for part in address.split(".")]
-    return (
-        parts[0] == 10
-        or (parts[0] == 192 and parts[1] == 168)
-        or (parts[0] == 172 and 16 <= parts[1] <= 31)
-    )
+IPV4_TOKEN = re.compile(r"(?<![\d.])\d{1,3}(?:\.\d{1,3}){3}(?![\d.])")
+IPV6_TOKEN = re.compile(r"(?<![\w:])(?:[0-9a-f]{1,4}:){2,}[0-9a-f]{0,4}(?![\w:])", re.IGNORECASE)
+BEARER_TOKEN = re.compile(r"Bearer\s+[A-Za-z0-9._-]{8,}", re.IGNORECASE)
+ASSIGNMENT = re.compile(r"(?i)(?:token|api_key|password|secret)\s*[=:]\s*[A-Za-z0-9]{4,}")
 
 
 class TestProperties(unittest.TestCase):
@@ -34,8 +31,10 @@ class TestProperties(unittest.TestCase):
             clean = clean_text(value)
             self.assertIsInstance(clean, str)
             self.assertLessEqual(len(clean), 4000)
-            for match in IPV4.finditer(clean):
-                self.assertFalse(is_private(match.group()), clean)
+            self.assertIsNone(IPV4_TOKEN.search(clean), clean)
+            self.assertIsNone(IPV6_TOKEN.search(clean), clean)
+            self.assertIsNone(BEARER_TOKEN.search(clean), clean)
+            self.assertIsNone(ASSIGNMENT.search(clean), clean)
 
 
 if __name__ == "__main__":

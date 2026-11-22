@@ -7,7 +7,9 @@ import urllib.request
 
 
 class LLMError(RuntimeError):
-    pass
+    def __init__(self, message: str, code: int | None = None) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 def _post(base_url: str, api_key: str, payload: dict, timeout: int = 90, retries: int = 2) -> dict:
@@ -34,7 +36,7 @@ def _post(base_url: str, api_key: str, payload: dict, timeout: int = 90, retries
                     delay = 2 ** (attempt + 1)
                 time.sleep(min(delay, 30))
                 continue
-            raise LLMError("llm http " + str(exc.code) + ": " + detail) from exc
+            raise LLMError("llm http " + str(exc.code) + ": " + detail, exc.code) from exc
         except urllib.error.URLError as exc:
             raise LLMError("llm network error: " + str(exc.reason)) from exc
     raise LLMError("llm retries exhausted")
@@ -52,7 +54,7 @@ def chat(cfg, messages: list[dict], max_tokens: int = 800) -> tuple[str, int, in
     try:
         body = _post(cfg.llm_base_url, cfg.llm_api_key, payload)
     except LLMError as exc:
-        if "400" not in str(exc):
+        if exc.code != 400:
             raise
         payload.pop("response_format", None)
         body = _post(cfg.llm_base_url, cfg.llm_api_key, payload)
@@ -62,5 +64,7 @@ def chat(cfg, messages: list[dict], max_tokens: int = 800) -> tuple[str, int, in
     except (KeyError, IndexError) as exc:
         raise LLMError("unexpected llm response shape") from exc
 
+    if not isinstance(content, str):
+        content = ""
     usage = body.get("usage", {})
     return content, int(usage.get("prompt_tokens", 0)), int(usage.get("completion_tokens", 0))

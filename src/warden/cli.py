@@ -16,10 +16,10 @@ def run_once(cfg: Config) -> dict:
     report = sanitize(investigate(cfg))
     try:
         publish(report, cfg.report_path)
-        metrics.inc("runs")
+        metrics.inc("warden_runs_total")
         metrics.set_gauge("warden_last_confidence", float(report["confidence"]))
     except InvalidReport as exc:
-        metrics.inc("failures")
+        metrics.inc("warden_failures_total")
         print("publish rejected: " + str(exc), file=sys.stderr)
     metrics.set_gauge("warden_last_run_timestamp_seconds", time.time())
     return report
@@ -41,7 +41,7 @@ def main() -> None:
                 metrics.add_tokens("warden_tokens_in_total", report["cost"]["tokens_in"])
                 metrics.add_tokens("warden_tokens_out_total", report["cost"]["tokens_out"])
             except Exception as exc:  # keep the loop alive
-                metrics.inc("failures")
+                metrics.inc("warden_failures_total")
                 print("run failed: " + repr(exc), file=sys.stderr)
             time.sleep(cfg.interval_seconds)
     else:

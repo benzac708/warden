@@ -31,11 +31,12 @@ class TestLoop(unittest.TestCase):
             (FINISH, 10, 2),
         ]
         with patch("warden.investigate.chat", side_effect=answers), patch(
-            "warden.investigate.run_tool", return_value="NO_MATCHING_LOGS"
+            "warden.investigate.run_tool", return_value="INFO: request handled"
         ):
             report = investigate(CFG)
         self.assertEqual(len(report["trace"]), 1)
         self.assertEqual(report["trace"][0]["tool"], "loki_query")
+        self.assertIn("4f2a9c", report["summary"])
 
     def test_quiet_status_is_preserved(self):
         with patch("warden.investigate.chat", return_value=(QUIET, 5, 3)):
@@ -44,15 +45,32 @@ class TestLoop(unittest.TestCase):
         self.assertIn("No matching error logs", report["summary"])
 
     def test_budget_exhaustion_publishes_gathered_evidence(self):
-        cfg = SimpleNamespace(llm_model="test-model", max_steps=1, token_budget=100000, logql='{namespace="apps"}')
+        cfg = SimpleNamespace(llm_model="test-model", max_steps=10, token_budget=12, logql='{namespace="apps"}')
         answer = ('{"tool":"loki_query","args":{"query":"x"}}', 10, 2)
-        with patch("warden.investigate.chat", return_value=answer), patch(
+        with patch("warden.investigate.chat", return_value=answer) as call, patch(
             "warden.investigate.run_tool", return_value="ERROR demo: database connection refused"
         ):
             report = investigate(cfg)
+        self.assertEqual(call.call_count, 1)
         self.assertEqual(report["status"], "explained")
         self.assertIn("database connection refused", report["summary"])
         self.assertTrue(report["evidence"])
+
+    def test_budget_is_enforced_on_invalid_json_path(self):
+        cfg = SimpleNamespace(llm_model="test-model", max_steps=10, token_budget=12, logql='{namespace="apps"}')
+        with patch("warden.investigate.chat", return_value=("not json", 10, 2)) as call:
+            report = investigate(cfg)
+        self.assertEqual(call.call_count, 1)
+        self.assertEqual(report["status"], "incomplete")
+
+    def test_bad_confidence_and_non_string_content_do_not_crash(self):
+        bad = '{"tool":"finish","status":"explained","summary":"x","confidence":"high"}'
+        with patch("warden.investigate.chat", return_value=(bad, 1, 1)):
+            self.assertEqual(investigate(CFG)["confidence"], 0.0)
+        with patch("warden.investigate.chat", return_value=(None, 1, 1)) as call:
+            report = investigate(CFG)
+        self.assertEqual(call.call_count, 4)
+        self.assertEqual(report["status"], "incomplete")
 
 
 if __name__ == "__main__":
