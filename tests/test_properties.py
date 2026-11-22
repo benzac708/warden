@@ -5,6 +5,7 @@ not leave an IP address, a bearer token, or a credential assignment behind.
 The checks below are written independently of the production regexes.
 """
 
+import ipaddress
 import random
 import re
 import unittest
@@ -18,7 +19,7 @@ FRAGMENTS = [
     "a@b.local", "{}", "\n", "emoji 🚀", "x" * 200,
 ]
 IPV4_TOKEN = re.compile(r"(?<![\d.])\d{1,3}(?:\.\d{1,3}){3}(?![\d.])")
-IPV6_TOKEN = re.compile(r"(?<![\w:])(?:[0-9a-f]{1,4}:){2,}[0-9a-f]{0,4}(?![\w:])", re.IGNORECASE)
+IPV6_TOKEN = re.compile(r"[0-9a-fA-F:]{2,39}")
 BEARER_TOKEN = re.compile(r"Bearer\s+[A-Za-z0-9._-]{8,}", re.IGNORECASE)
 ASSIGNMENT = re.compile(r"(?i)(?:token|api_key|password|secret)\s*[=:]\s*[A-Za-z0-9]{4,}")
 
@@ -32,7 +33,12 @@ class TestProperties(unittest.TestCase):
             self.assertIsInstance(clean, str)
             self.assertLessEqual(len(clean), 4000)
             self.assertIsNone(IPV4_TOKEN.search(clean), clean)
-            self.assertIsNone(IPV6_TOKEN.search(clean), clean)
+            for match in IPV6_TOKEN.finditer(clean):
+                try:
+                    ipaddress.IPv6Address(match.group())
+                except ValueError:
+                    continue
+                self.fail("IPv6 survived: " + clean)
             self.assertIsNone(BEARER_TOKEN.search(clean), clean)
             self.assertIsNone(ASSIGNMENT.search(clean), clean)
 

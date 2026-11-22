@@ -4,6 +4,7 @@ Every pattern is deliberately broad: a false positive hides a harmless log
 line, while a false negative publishes internal data on a public page.
 """
 
+import ipaddress
 import re
 
 URL_CREDS = re.compile(r"[a-z][a-z0-9+.-]*://[^\s/@]+:[^\s@]+@", re.IGNORECASE)
@@ -13,10 +14,19 @@ SECRET = re.compile(r"(token|api[_-]?key|secret|password|authorization)\s*[=:]\s
 SVC = re.compile(r"[a-z0-9-]+(?:\.[a-z0-9-]+)*\.svc\.cluster\.local", re.IGNORECASE)
 HOST = re.compile(r"\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:internal|local|lan|home\.arpa)\b", re.IGNORECASE)
 POD = re.compile(r"\b[a-z0-9][a-z0-9-]*-[a-z0-9]{5,}\b")
-IPV6 = re.compile(r"\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}\b")
+IPV6_CANDIDATE = re.compile(r"[0-9a-fA-F:]{2,39}")
 IP = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
 EMAIL = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
 SECRET_KEY = re.compile(r"(?i)(?:^|[_-])(?:api[_-]?key|token|secret|password|authorization)(?:$|[_-])")
+
+
+def _redact_ipv6(match: re.Match) -> str:
+    token = match.group(0)
+    try:
+        ipaddress.IPv6Address(token)
+    except ValueError:
+        return token
+    return "[internal-ip]"
 
 
 def clean_text(value: str) -> str:
@@ -28,7 +38,7 @@ def clean_text(value: str) -> str:
     value = HOST.sub("[internal-host]", value)
     value = POD.sub("[pod]", value)
     value = IP.sub("[internal-ip]", value)
-    value = IPV6.sub("[internal-ip]", value)
+    value = IPV6_CANDIDATE.sub(_redact_ipv6, value)
     value = EMAIL.sub("[redacted]", value)
     return value[:4000]
 

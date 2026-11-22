@@ -30,6 +30,10 @@ class TestSanitize(unittest.TestCase):
         self.assertNotIn("node-1.internal", clean)
         self.assertNotIn("db.local", clean)
 
+    def test_iso_timestamp_is_preserved(self):
+        stamp = "2026-11-22T08:18:58Z"
+        self.assertEqual(clean_text(stamp), stamp)
+
     def test_nested_keys_and_values_are_cleaned(self):
         report = {
             "schema": "warden.report/v1",
