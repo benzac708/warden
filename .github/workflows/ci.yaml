@@ -93,7 +93,7 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -t ed25519 github.com > ~/.ssh/known_hosts
           ACTUAL=$(ssh-keygen -lf ~/.ssh/known_hosts | awk '{print $2}')
-          EXPECTED='+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU'
+          EXPECTED='SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU'
           if [ "$ACTUAL" != "$EXPECTED" ]; then
             echo "GitHub host key mismatch: $ACTUAL" >&2
             exit 1
